@@ -19,40 +19,23 @@ def max_pooling(input):
 
 #load mnist dataset
 mnist_dataset = input_data.read_data_sets("MNIST_data/", one_hot=True)
-log_dir = './MNIST_log'
 #定义图片的占位符，是一个Tensor，shape为[None, 784]，即可以传入任意数量的
 # 图片，每张图片的长度为784(28 * 28)
-x = tf.placeholder(tf.float32, [None, 784])
-#定义图片的占位符， 是一个Tensor，shape为【None， 10】，即可以传入任意数量的
-#图片，每张图片的长度为10
-y_ = tf.placeholder(tf.float32, [None, 10])
+with tf.name_scope("input"):
+    x = tf.placeholder(tf.float32, [None, 784], name='x_input')
+    #定义图片的占位符， 是一个Tensor，shape为【None， 10】，即可以传入任意数量的
+    # #图片，每张图片的长度为10
+    y_ = tf.placeholder(tf.float32, [None, 10], name='y_input')
 
-x_image = tf.reshape(x, [-1, 28, 28, 1])
-# 将图片数据汇总给tensorboard，设定最多展示10张
-tf.summary.image('input', x_image, 10)
-
-# 绘制参数变化
-def variable_summaries(var):
-    # 计算参数的均值，并使用tf.summary.scaler记录
-    mean = tf.reduce_mean(var)
-    tf.summary.scalar('mean', mean)
-
-    # 计算参数的标准差
-    stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-    # 使用tf.summary.scaler记录记录下标准差，最大值，最小值
-    tf.summary.scalar('stddev', stddev)
-    tf.summary.scalar('max', tf.reduce_max(var))
-    tf.summary.scalar('min', tf.reduce_min(var))
-    # 用直方图记录参数的分布
-    tf.summary.histogram('histogram', var)
+with tf.name_scope("input_reshape"):
+    x_image = tf.reshape(x, [-1, 28, 28, 1])
+    tf.summary.image('input', x_image, 10)
 
 #---------------------------conv1--------------------------
 #5为卷积核的高度和宽度
 #1为输入channel的数量（灰度图）； 32为输出channel的数量，即为32个滤波器，提取32个特征
 w_conv1 = weight_variable([5,5,1,32]) #定义滤波器
-variable_summaries(w_conv1)
 b_conv1 = bias_variable([32])   #每个滤波器对应一个bias
-variable_summaries(b_conv1)
 h_conv1 = tf.nn.relu(conv2d(x_image, w_conv1) + b_conv1)
 h_pool1 = max_pooling(h_conv1)
 
@@ -74,38 +57,55 @@ h_fc1_drop = tf.nn.dropout(h_fc1, 0.5) #dropout 防止过拟合
 #----------------------------fc2 layer------------------------
 w_fc2 = weight_variable([1024,10])
 b_fc2 = bias_variable([10])
-prediction = tf.nn.softmax(tf.matmul(h_fc1_drop, w_fc2) + b_fc2)
-
+with tf.name_scope("Prediction_softmax"):
+    prediction = tf.nn.softmax(tf.matmul(h_fc1_drop, w_fc2) + b_fc2)
 
 #---------------------training and evaluation------------
 def accuracy(v_x, v_y):
-    global prediction
-    y_pre = sess.run(prediction, feed_dict={x:v_x})
-    # 完成训练后，对模型的准确率进行验证
-    correct_prediction = tf.equal(tf.argmax(y_pre,1), tf.argmax(v_y,1))
-    #统计全部预测的accuracy，并将bool类型转化为float，再求平均
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-    result = sess.run(accuracy,feed_dict={x: v_x, y_: v_y})
-    return result
+    with tf.name_scope("Accuracy"):
+        global prediction
+        y_pre = sess.run(prediction, feed_dict={x:v_x})
+        # 完成训练后，对模型的准确率进行验证
+        correct_prediction = tf.equal(tf.argmax(y_pre,1), tf.argmax(v_y,1))
+        #统计全部预测的accuracy，并将bool类型转化为float，再求平均
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        result = sess.run(accuracy,feed_dict={x: v_x, y_: v_y})
+        return result
 
 #计算loss, 来衡量模型的误差
 # cross_entroy = tf.reduce_mean(-tf.reduce_sum(y_*tf.log(prediction), reduction_indices=[1]))
-cross_entroy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=prediction))
+with tf.name_scope("Loss"):
+    cross_entroy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=prediction))
 #开始反向传播,用Adam优化器来训练模型，使得loss最小
-train_step = tf.train.AdamOptimizer(learning_rate=(1e-4)).minimize(cross_entroy)
-# train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entroy)
+with tf.name_scope("TrainStep_AdamOptimizer"):
+    train_step = tf.train.AdamOptimizer(learning_rate=(1e-4)).minimize(cross_entroy)
+    # train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entroy)
+
+# 将所有summary全部保存到磁盘，以便tensorboard显示
+summary = tf.summary.merge_all()
 
 sess = tf.Session()
+# 指定一个文件用来保存图
+summary_write = tf.summary.FileWriter("logs/", sess.graph)
 sess.run(tf.global_variables_initializer())
 
-#训练1000次
+#训练500次
 #每次从mnist_dataset中取出100张图片进行训练，
 #把这100张图片的像素点存在batch_x变量里，把图片代表的0-9数字存在batch_y变量里
-for i in range(500):
-    batch_x,batch_y = mnist_dataset.train.next_batch(100)
+for i in range(10):
+    batch_x,batch_y = mnist_dataset.train.next_batch(1)
     sess.run(train_step,feed_dict={x: batch_x, y_: batch_y})
-    if i % 50 == 0:
+    if i % 3 == 0:
         # print("Training dataset accuracy: " + str(accuracy(mnist_dataset.train.images, mnist_dataset.train.labels)))
         # print(mnist_dataset.train.images.shape)
+        # #调用sess.run运行图，生成每一步的训练过程数据
+        summary_str = sess.run(summary, feed_dict={x: batch_x, y_: batch_y})
+        # 调用add_summary方法将训练过程以及训练步数保存
+        summary_write.add_summary(summary_str, i)
+        summary_write.flush()
         print("Test dataset accuracy: " + str(accuracy(mnist_dataset.test.images, mnist_dataset.test.labels)))
+
+
+
+
 
