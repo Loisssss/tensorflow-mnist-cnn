@@ -3,11 +3,11 @@ import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import  input_data
 
 def weight_variable(shape):
-    initial = tf.truncated_normal(shape, stddev=0.1)
+    initial = tf.truncated_normal(shape, stddev=0.1, name='Weights')
     return tf.Variable(initial)
 
 def bias_variable(shape):
-    initial = tf.constant(0.1, shape=shape)
+    initial = tf.constant(0.1, shape=shape, name='Bias')
     return tf.Variable(initial)
 
 # 定义卷积和池化函数,两边两个值默认为1，中间两个1代表分别从x方向以及y方向的步长
@@ -61,25 +61,38 @@ with tf.name_scope("Prediction_softmax"):
     prediction = tf.nn.softmax(tf.matmul(h_fc1_drop, w_fc2) + b_fc2)
 
 #---------------------training and evaluation------------
-def accuracy(v_x, v_y):
-    with tf.name_scope("Accuracy"):
-        global prediction
-        y_pre = sess.run(prediction, feed_dict={x:v_x})
+# def accuracy(v_x, v_y):
+#     with tf.name_scope("Accuracy"):
+#         global prediction
+#         y_pre = sess.run(prediction, feed_dict={x:v_x})
+#         # 完成训练后，对模型的准确率进行验证
+#         correct_prediction = tf.equal(tf.argmax(y_pre,1), tf.argmax(v_y,1))
+#         #统计全部预测的accuracy，并将bool类型转化为float，再求平均
+#         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+#         result = sess.run(accuracy,feed_dict={x: v_x, y_: v_y})
+#         return result
+#
+
+with tf.name_scope("Accuracy"):
+    with tf.name_scope("Correct_Prediction"):
         # 完成训练后，对模型的准确率进行验证
-        correct_prediction = tf.equal(tf.argmax(y_pre,1), tf.argmax(v_y,1))
-        #统计全部预测的accuracy，并将bool类型转化为float，再求平均
+        correct_prediction = tf.equal(tf.argmax(y_, 1), tf.argmax(prediction, 1))
+    with tf.name_scope("accuracy"):
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-        result = sess.run(accuracy,feed_dict={x: v_x, y_: v_y})
-        return result
+tf.summary.scalar('accuracy', accuracy)
 
 #计算loss, 来衡量模型的误差
 # cross_entroy = tf.reduce_mean(-tf.reduce_sum(y_*tf.log(prediction), reduction_indices=[1]))
 with tf.name_scope("Loss"):
     cross_entroy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=prediction))
+# create a scalar summary to monitor cross_entroy tensor
+tf.summary.scalar("loss", cross_entroy)
+
 #开始反向传播,用Adam优化器来训练模型，使得loss最小
 with tf.name_scope("TrainStep_AdamOptimizer"):
     train_step = tf.train.AdamOptimizer(learning_rate=(1e-4)).minimize(cross_entroy)
     # train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entroy)
+
 
 # 将所有summary全部保存到磁盘，以便tensorboard显示
 summary = tf.summary.merge_all()
@@ -103,8 +116,8 @@ for i in range(10):
         # 调用add_summary方法将训练过程以及训练步数保存
         summary_write.add_summary(summary_str, i)
         summary_write.flush()
-        print("Test dataset accuracy: " + str(accuracy(mnist_dataset.test.images, mnist_dataset.test.labels)))
-
+        # print("Test dataset accuracy: " + str(accuracy(mnist_dataset.test.images, mnist_dataset.test.labels)))
+        print("Test dataset accuracy: " + str(sess.run(accuracy, feed_dict={x: mnist_dataset.test.images, y_: mnist_dataset.test.labels})))
 
 
 
