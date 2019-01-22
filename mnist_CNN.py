@@ -105,10 +105,10 @@ sess.run(tf.global_variables_initializer())
 #训练500次
 #每次从mnist_dataset中取出100张图片进行训练，
 #把这100张图片的像素点存在batch_x变量里，把图片代表的0-9数字存在batch_y变量里
-for i in range(10):
-    batch_x,batch_y = mnist_dataset.train.next_batch(1)
+for i in range(1000):
+    batch_x,batch_y = mnist_dataset.train.next_batch(100)
     sess.run(train_step,feed_dict={x: batch_x, y_: batch_y})
-    if i % 3 == 0:
+    if i % 25 == 0:
         # print("Training dataset accuracy: " + str(accuracy(mnist_dataset.train.images, mnist_dataset.train.labels)))
         # print(mnist_dataset.train.images.shape)
         # #调用sess.run运行图，生成每一步的训练过程数据
@@ -117,7 +117,7 @@ for i in range(10):
         summary_write.add_summary(summary_str, i)
         summary_write.flush()
         # print("Test dataset accuracy: " + str(accuracy(mnist_dataset.test.images, mnist_dataset.test.labels)))
-        print("Test dataset accuracy: " + str(sess.run(accuracy, feed_dict={x: mnist_dataset.test.images, y_: mnist_dataset.test.labels})))
+        print(str(i) +" Test dataset accuracy: " + str(sess.run(accuracy, feed_dict={x: mnist_dataset.test.images, y_: mnist_dataset.test.labels})))
 
 
 
