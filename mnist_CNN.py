@@ -1,6 +1,8 @@
 import numpy
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import  input_data
+from tensorflow.python.framework import graph_util
+
 
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1, name='Weights')
@@ -58,7 +60,11 @@ h_fc1_drop = tf.nn.dropout(h_fc1, 0.5) #dropout 防止过拟合
 w_fc2 = weight_variable([1024,10])
 b_fc2 = bias_variable([10])
 with tf.name_scope("Prediction_softmax"):
-    prediction = tf.nn.softmax(tf.matmul(h_fc1_drop, w_fc2) + b_fc2)
+    prediction = tf.nn.softmax(tf.matmul(h_fc1_drop, w_fc2) + b_fc2, name='prediction')
+
+#(小处理)将logits乘以1赋值给logits_eval，定义name，方便在后续调用模型时通过tensor名字调用输出tensor
+b = tf.constant(value=1,dtype=tf.float32)
+logits_eval = tf.multiply(prediction,b,name='logits_eval')
 
 #---------------------training and evaluation------------
 # def accuracy(v_x, v_y):
@@ -72,6 +78,7 @@ with tf.name_scope("Prediction_softmax"):
 #         result = sess.run(accuracy,feed_dict={x: v_x, y_: v_y})
 #         return result
 #
+
 
 with tf.name_scope("Accuracy"):
     with tf.name_scope("Correct_Prediction"):
@@ -108,7 +115,7 @@ sess.run(tf.global_variables_initializer())
 for i in range(1000):
     batch_x,batch_y = mnist_dataset.train.next_batch(100)
     sess.run(train_step,feed_dict={x: batch_x, y_: batch_y})
-    if i % 25 == 0:
+    if i % 50 == 0:
         # print("Training dataset accuracy: " + str(accuracy(mnist_dataset.train.images, mnist_dataset.train.labels)))
         # print(mnist_dataset.train.images.shape)
         # #调用sess.run运行图，生成每一步的训练过程数据
@@ -120,5 +127,8 @@ for i in range(1000):
         print(str(i) +" Test dataset accuracy: " + str(sess.run(accuracy, feed_dict={x: mnist_dataset.test.images, y_: mnist_dataset.test.labels})))
 
 
+constant_graph = graph_util.convert_variables_to_constants(sess, sess.graph_def, ['logits_eval'])
+with tf.gfile.FastGFile("./model/model.pb", mode='wb') as f:
+    f.write(constant_graph.SerializeToString())
 
 
