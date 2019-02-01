@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np # linear algebra
 from sklearn.model_selection import train_test_split
+import matplotlib.cm as cm
 
 
 train_file = "./kaggleData/train.csv"
@@ -40,6 +41,14 @@ print("Y_train shape", Y_train.shape)
 print("X_test shape", X_test.shape)
 print("Y_test shape", Y_test.shape)
 
+
+# display image
+def display(img):
+    # (784) => (28,28)
+    one_image = img.reshape(28,28)
+    plt.axis('off')
+    plt.imshow(one_image, cmap=cm.binary)
+# display(X_train[10])
 
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1, name='Weights')
@@ -114,6 +123,6 @@ for i in range(32):
         batch_x = X_train[batch*batch_size:(batch+1)*batch_size]
         batch_y = Y_train[batch*batch_size:(batch+1)*batch_size]
         sess.run(train_step,feed_dict={x: batch_x, y_: batch_y})
-    if i % 50 == 0:
+    if i % 1 == 0:
         # print("Test dataset accuracy: " + str(accuracy(mnist_dataset.test.images, mnist_dataset.test.labels)))
         print(str(i) +" Test dataset accuracy: " + str(sess.run(accuracy, feed_dict={x: X_test, y_: Y_test})))
